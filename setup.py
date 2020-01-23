@@ -8,7 +8,7 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='dbcp-lite',
-    version='0.0.1',
+    version='0.0.1-rc2',
     description='Simple, light and nearly featureless database connection pool',
     long_description=long_description,
     long_description_content_type='text/markdown',
