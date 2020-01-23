@@ -1,8 +1,7 @@
-import queue
 import unittest
 from unittest.mock import Mock, call
 
-from dbcp_lite import DBConnectionPool
+from dbcp_lite import DBConnectionPool, PoolTimeout
 
 
 class TestPoolInit(unittest.TestCase):
@@ -102,7 +101,7 @@ class TestPoolAcquire(unittest.TestCase):
         create_func = Mock(return_value=mock_conn)
         pool = DBConnectionPool(create_func, min_size=1, max_size=1)
         with pool.acquire() as _:
-            with self.assertRaises(queue.Empty):
+            with self.assertRaises(PoolTimeout):
                 with pool.acquire(timeout=0.1) as _:
                     pass
 

@@ -37,7 +37,7 @@ called on the `Connection` and the `Cursor` will be closed.
 ## Timeouts
 
 A timeout can be provided to various methods. If no connections are available, to
-be `acquired` or `closed`, the methods will raise a `queue.Empty` exception.
+be `acquired` or `closed`, the methods will raise a `PoolTimeout` exception.
 
 # Lifecycle Methods
 

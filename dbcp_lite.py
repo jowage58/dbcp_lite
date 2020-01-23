@@ -5,8 +5,16 @@ import queue
 import threading
 from typing import Callable, Dict, Iterator, Tuple
 
+try:
+    from queue import SimpleQueue as PoolQueue
+except ImportError:
+    from queue import Queue as PoolQueue
 
 logger = logging.getLogger('dbcp_lite')
+
+
+class PoolTimeout(Exception):
+    pass
 
 
 class DBConnectionPool:
@@ -27,7 +35,7 @@ class DBConnectionPool:
         if create_kwargs is None:
             create_kwargs = {}
         _create_func = functools.partial(create_func, *create_args, **create_kwargs)
-        self._pool = queue.SimpleQueue()
+        self._pool = PoolQueue()
         for conn in [_create_func() for _ in range(min_size)]:
             self._pool.put_nowait(conn)
         self._create_func = _create_func
@@ -78,7 +86,7 @@ class DBConnectionPool:
             if conn is None:
                 return self.acquire(timeout)
         else:
-            conn = self._pool.get(block=True, timeout=timeout)
+            conn = self._pool_get(timeout)
         try:
             self.on_acquire(conn)
             yield conn
@@ -118,7 +126,7 @@ class DBConnectionPool:
         with self._lock:
             pool_size = self._size
         while pool_size:
-            conn = self._pool.get(block=True, timeout=timeout)
+            conn = self._pool_get(timeout)
             pool_size -= 1
             try:
                 self.on_close(conn)
@@ -138,6 +146,12 @@ class DBConnectionPool:
                     conn = None
         return conn
 
+    def _pool_get(self, timeout):
+        try:
+            return self._pool.get(block=True, timeout=timeout)
+        except queue.Empty:
+            raise PoolTimeout('No connections available before timeout: %s', timeout)
+
     def __enter__(self):
         return self
 
@@ -153,3 +167,6 @@ class DBConnectionPool:
             f"max_size={self.max_size}, current_size={self._size}, "
             f"closed={self._closed})"
         )
+
+
+__all__ = ['DBConnectionPool', 'PoolTimeout']
