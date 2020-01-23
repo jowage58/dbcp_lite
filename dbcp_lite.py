@@ -3,7 +3,7 @@ import logging
 import contextlib
 import queue
 import threading
-from typing import Callable, Dict, Iterator, Tuple
+from typing import Callable, Dict, Tuple
 
 try:
     from queue import SimpleQueue as PoolQueue
@@ -46,14 +46,14 @@ class DBConnectionPool:
         self.max_size = max_size
         self.name = name
 
-    def on_acquire(self, connection):
+    def on_acquire(self, connection) -> None:
         """Called when the connection is acquired.
 
         The default implementation is a no-op.
         """
         pass
 
-    def on_return(self, connection):
+    def on_return(self, connection) -> None:
         """Called when the connection is being returned to the pool.
 
         The default implementation calls `connection.rollback()`. In order
@@ -62,7 +62,7 @@ class DBConnectionPool:
         """
         connection.rollback()
 
-    def on_close(self, connection):
+    def on_close(self, connection) -> None:
         """Called when the connection is being removed from the pool.
 
         Connections are removed from the pool only after the pool `close()`
@@ -71,7 +71,7 @@ class DBConnectionPool:
         connection.close()
 
     @contextlib.contextmanager
-    def acquire(self, timeout: float = 60.0) -> Iterator:
+    def acquire(self, timeout: float = 60.0):
         """Provides a Connection from the pool.
 
         For use in a with block and upon exit the provided connection
@@ -97,7 +97,7 @@ class DBConnectionPool:
                 self._pool.put_nowait(conn)
 
     @contextlib.contextmanager
-    def acquire_cursor(self, timeout: float = 60.0) -> Iterator:
+    def acquire_cursor(self, timeout: float = 60.0):
         """Provides a Cursor using a Connection from the pool.
 
         This is a convenience method that returns a Cursor and upon successful
@@ -113,7 +113,7 @@ class DBConnectionPool:
             finally:
                 cursor.close()
 
-    def close(self, timeout=120) -> None:
+    def close(self, timeout: float = 120) -> None:
         """Close the pool and the Connections it contains.
 
         After a call to close the pool should no longer be used. Calls
