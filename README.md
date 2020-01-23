@@ -1,6 +1,6 @@
 # DBCP Lite
 
-Simple, light and nearly featureless database connection pool for Python.
+A simple, light and nearly featureless database connection pool for Python.
 
 Connections are added to the pool as needed up to `max_size` in number.
 Once added the connections will remain in the pool and no attempt is made
@@ -36,8 +36,8 @@ called on the `Connection` and the `Cursor` will be closed.
 
 ## Timeouts
 
-A timeout can be provided to various methods. If no connections are available, to
-be `acquired` or `closed`, the methods will raise a `PoolTimeout` exception.
+A timeout can be provided to various methods. If no connections are available to
+be `acquired` or `closed` the methods will raise a `PoolTimeout` exception.
 
 # Lifecycle Methods
 
