@@ -34,7 +34,6 @@ class DBConnectionPool:
         self._size = min_size
         self._closed = False
         self._lock = threading.Lock()
-        self._close_lock = threading.Lock()
 
     def on_create(self, *args, **kwargs):
         raise NotImplementedError
