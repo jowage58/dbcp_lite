@@ -9,13 +9,13 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 setup(
     name='dbcp_lite',
     version='0.0.1',
-    description='Simple, light and nearly featureless database connection pool for Python',
+    description='Simple, light and nearly featureless database connection pool',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/jowage58/dbcp_lite/',
     author='John Wagenleitner',
     author_email='johnwa@mail.fresnostate.edu',
-    keywords='DBAPI connection pool',
+    keywords='database connection pool',
     py_modules=['dbcp_lite'],
     python_requires='>=3.6, <4',
     project_urls={
