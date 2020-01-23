@@ -8,7 +8,7 @@ with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='dbcp-lite',
-    version='0.0.1-rc2',
+    version='0.0.1-rc5',
     description='Simple, light and nearly featureless database connection pool',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -25,6 +25,8 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
+        'Topic :: Database',
+        'Intended Audience :: Developers',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
