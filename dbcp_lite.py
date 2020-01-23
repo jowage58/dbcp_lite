@@ -1,3 +1,4 @@
+import functools
 import logging
 import contextlib
 import queue
@@ -21,34 +22,55 @@ class DBConnectionPool:
         assert 1 <= min_size <= max_size <= 32, (
             f'Pool size out of range: min={min_size}, max={max_size}'
         )
-        self.name = name
-        self._create_args = create_args if create_args else ()
-        self._create_kwargs = create_kwargs if create_kwargs else {}
-        self.on_create = create_func
-        self.min_size = min_size
-        self.max_size = max_size
+        if create_args is None:
+            create_args = ()
+        if create_kwargs is None:
+            create_kwargs = {}
+        _create_func = functools.partial(create_func, *create_args, **create_kwargs)
         self._pool = queue.SimpleQueue()
-        for i in range(min_size):
-            conn = create_func(*self._create_args, **self._create_kwargs)
+        for conn in [_create_func() for _ in range(min_size)]:
             self._pool.put_nowait(conn)
+        self._create_func = _create_func
         self._size = min_size
         self._closed = False
         self._lock = threading.Lock()
-
-    def on_create(self, *args, **kwargs):
-        raise NotImplementedError
+        self.min_size = min_size
+        self.max_size = max_size
+        self.name = name
 
     def on_acquire(self, connection):
-        return connection
+        """Called when the connection is acquired.
 
-    def on_release(self, connection):
-        return connection
+        The default implementation is a no-op.
+        """
+        pass
+
+    def on_return(self, connection):
+        """Called when the connection is being returned to the pool.
+
+        The default implementation calls `connection.rollback()`. In order
+        to enable auto-commit you can replace this function with one that
+        calls `connection.commit()`.
+        """
+        connection.rollback()
 
     def on_close(self, connection):
-        return connection
+        """Called when the connection is being removed from the pool.
+
+        Connections are removed from the pool only after the pool `close()`
+        method is called. The default implementation calls `connection.close()`.
+        """
+        connection.close()
 
     @contextlib.contextmanager
     def acquire(self, timeout: float = 60.0) -> Iterator:
+        """Provides a Connection from the pool.
+
+        For use in a with block and upon exit the provided connection
+        will be returned to the pool. Callers are expected to NOT call the close
+        method on the connection. If a Connection is not available before `timeout`
+        seconds a `queue.Empty` exception will be raised.
+        """
         if self._closed:
             raise RuntimeError('Pool is closed')
         if self._size < self.max_size:
@@ -57,15 +79,24 @@ class DBConnectionPool:
                 return self.acquire(timeout)
         else:
             conn = self._pool.get(block=True, timeout=timeout)
-        conn = self.on_acquire(conn)
         try:
+            self.on_acquire(conn)
             yield conn
         finally:
-            conn = self.on_release(conn)
-            self.release(conn)
+            try:
+                self.on_return(conn)
+            finally:
+                self._pool.put_nowait(conn)
 
     @contextlib.contextmanager
     def acquire_cursor(self, timeout: float = 60.0) -> Iterator:
+        """Provides a Cursor using a Connection from the pool.
+
+        This is a convenience method that returns a Cursor and upon successful
+        completion of the with block will call `connection.commit()` and close
+        the Cursor. If a Connection is not available before `timeout`
+        seconds a `queue.Empty` exception will be raised.
+        """
         with self.acquire(timeout) as conn:
             cursor = conn.cursor()
             try:
@@ -74,51 +105,38 @@ class DBConnectionPool:
             finally:
                 cursor.close()
 
-    def release(self, connection) -> None:
-        try:
-            connection.rollback()
-        except:
-            logger.warning('releasing connection failed: %s', connection)
-            connection = self.on_create(*self._create_args, **self._create_kwargs)
-        if self._closed:
-            connection = self.on_close(connection)
-            self._close_conn(connection)
-        else:
-            self._pool.put_nowait(connection)
+    def close(self, timeout=120) -> None:
+        """Close the pool and the Connections it contains.
 
-    def close(self) -> None:
+        After a call to close the pool should no longer be used. Calls
+        to `acquire()` will fail with a `RuntimeError`. If any of the pool's
+        Connections are not available before `timeout` seconds a `queue.Empty`
+        exception will be raised.
+        """
         logger.info('Closing pool: %s', self)
         self._closed = True
-        while True:
+        with self._lock:
+            pool_size = self._size
+        while pool_size:
+            conn = self._pool.get(block=True, timeout=timeout)
+            pool_size -= 1
             try:
-                conn = self._pool.get_nowait()
-            except queue.Empty:
-                break
-            else:
-                try:
-                    conn = self.on_close(conn)
-                    self._close_conn(conn)
-                except:
-                    logger.warning('Failed to close connection')
+                self.on_close(conn)
+            except Exception as e:
+                logger.warning('Failed to close connection: %s - %r', conn, e)
 
     def _try_get_or_create(self):
         try:
             conn = self._pool.get_nowait()
         except queue.Empty:
             with self._lock:
-                if self._size < self.max_size:
+                if not self._closed and self._size < self.max_size:
+                    conn = self._create_func()
                     self._size += 1
-                    conn = self.on_create(*self._create_args, **self._create_kwargs)
-                    logger.debug('added connection to pool: %s', conn)
+                    logger.debug('adding connection to pool: %s', conn)
                 else:
                     conn = None
         return conn
-
-    def _close_conn(self, connection) -> None:
-        try:
-            connection.close()
-        except:
-            logger.exception('Failed to close connection: %s', connection)
 
     def __enter__(self):
         return self
