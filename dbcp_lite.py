@@ -34,11 +34,12 @@ class DBConnectionPool:
             create_args = ()
         if create_kwargs is None:
             create_kwargs = {}
-        _create_func = functools.partial(create_func, *create_args, **create_kwargs)
-        self._pool = PoolQueue()
-        for conn in [_create_func() for _ in range(min_size)]:
-            self._pool.put_nowait(conn)
-        self._create_func = _create_func
+        create_func = functools.partial(create_func, *create_args, **create_kwargs)
+        pool = PoolQueue()
+        for conn in [create_func() for _ in range(min_size)]:
+            pool.put_nowait(conn)
+        self._create_func = create_func
+        self._pool = pool
         self._size = min_size
         self._closed = False
         self._lock = threading.Lock()
