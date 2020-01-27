@@ -78,7 +78,7 @@ class DBConnectionPool:
         For use in a with block and upon exit the provided connection
         will be returned to the pool. Callers are expected to NOT call the close
         method on the connection. If a Connection is not available before `timeout`
-        seconds a `queue.Empty` exception will be raised.
+        seconds a `PoolTimeout` exception will be raised.
         """
         if self._closed:
             raise RuntimeError('Pool is closed')
@@ -104,7 +104,7 @@ class DBConnectionPool:
         This is a convenience method that returns a Cursor and upon successful
         completion of the with block will call `connection.commit()` and close
         the Cursor. If a Connection is not available before `timeout`
-        seconds a `queue.Empty` exception will be raised.
+        seconds a `PoolTimeout` exception will be raised.
         """
         with self.acquire(timeout) as conn:
             cursor = conn.cursor()
@@ -119,7 +119,7 @@ class DBConnectionPool:
 
         After a call to close the pool should no longer be used. Calls
         to `acquire()` will fail with a `RuntimeError`. If any of the pool's
-        Connections are not available before `timeout` seconds a `queue.Empty`
+        Connections are not available before `timeout` seconds a `PoolTimeout`
         exception will be raised.
         """
         logger.debug('Closing pool: %s', self)
