@@ -1,6 +1,6 @@
+import contextlib
 import functools
 import logging
-import contextlib
 import queue
 import threading
 from typing import Callable, Dict, Tuple
