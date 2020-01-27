@@ -10,7 +10,7 @@ try:
 except ImportError:
     from queue import Queue as PoolQueue
 
-logger = logging.getLogger('dbcp_lite')
+logger = logging.getLogger(__name__)
 
 
 class PoolTimeout(Exception):
@@ -121,7 +121,7 @@ class DBConnectionPool:
         Connections are not available before `timeout` seconds a `queue.Empty`
         exception will be raised.
         """
-        logger.info('Closing pool: %s', self)
+        logger.debug('Closing pool: %s', self)
         self._closed = True
         with self._lock:
             pool_size = self._size
@@ -141,7 +141,7 @@ class DBConnectionPool:
                 if not self._closed and self._size < self.max_size:
                     conn = self._create_func()
                     self._size += 1
-                    logger.debug('adding connection to pool: %s', conn)
+                    logger.debug('Adding connection to pool: %s', conn)
                 else:
                     conn = None
         return conn
